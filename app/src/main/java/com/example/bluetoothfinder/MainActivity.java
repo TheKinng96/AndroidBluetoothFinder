@@ -9,15 +9,22 @@ import android.content.IntentFilter;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
+
+import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
 
     ListView listView;
     TextView textView;
     Button button;
+    ArrayList<String> bluetoothDevices = new ArrayList<String>();
+    ArrayList<String> addresses = new ArrayList<String>();
+
+    ArrayAdapter arrayAdapter;
 
     BluetoothAdapter bluetoothAdapter;
 
@@ -26,6 +33,28 @@ public class MainActivity extends AppCompatActivity {
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
 
+            if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)){
+                textView.setText("Finished");
+                button.setEnabled(true);
+            } else if (BluetoothDevice.ACTION_FOUND.equals(action)){
+                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                String name = device.getName();
+                String address = device.getAddress();
+
+                String rssi = Integer.toString(intent.getShortExtra(BluetoothDevice.EXTRA_RSSI,Short.MIN_VALUE));
+//rssi is the distance between you and they
+                if (!addresses.contains(address)){
+                    addresses.add(address);
+                    String deviceString = "";
+                    if (name == null || name.equals("")){
+                        deviceString = address + "- RSSI " + rssi + "dBm";
+                    } else {
+                        deviceString = name + "- RSSI " + rssi + "dBm");
+                    }
+                    bluetoothDevices.add(deviceString);
+                    arrayAdapter.notifyDataSetChanged();
+                }
+            }
         }
 
     };
@@ -33,6 +62,9 @@ public class MainActivity extends AppCompatActivity {
     public void search (View view) {
         textView.setText("Searching...");
         button.setEnabled(false);
+        bluetoothDevices.clear();
+        addresses.clear();
+        bluetoothAdapter.startDiscovery();
     }
 
     @Override
@@ -44,6 +76,9 @@ public class MainActivity extends AppCompatActivity {
         textView = findViewById(R.id.textView);
         button = findViewById(R.id.button);
 
+        arrayAdapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, bluetoothDevices);
+        listView.setAdapter(arrayAdapter);
+
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
         IntentFilter intentFilter = new IntentFilter();
@@ -53,6 +88,6 @@ public class MainActivity extends AppCompatActivity {
         intentFilter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
         registerReceiver(broadcastReceiver, intentFilter);
 
-        bluetoothAdapter.startDiscovery();
+
     }
 }
